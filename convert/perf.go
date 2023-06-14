@@ -24,7 +24,7 @@ import (
 )
 
 // ParsePerf parses a perf_events file format.
-func ParsePerf(r io.Reader) types.Profile {
+func ParsePerf(ctx context.Context, r io.Reader) types.Profile {
 	rootNode := types.Node{Name: "root", Value: 0, Children: make(map[string]*types.Node)}
 	profile := types.Profile{RootNode: rootNode, Stack: []string{}}
 
@@ -67,12 +67,12 @@ func ParsePerf(r io.Reader) types.Profile {
 		switch current {
 		case "start":
 			if reCommentLine.MatchString(line) {
-				err := state.Event(context.Background(), "read_comment")
+				err := state.Event(ctx, "read_comment")
 				if err != nil {
 					panic(err)
 				}
 			} else if matches := reEventRecordStartLine.FindStringSubmatch(line); matches != nil {
-				err := state.Event(context.Background(), "open_stack")
+				err := state.Event(ctx, "open_stack")
 				if err != nil {
 					panic(err)
 				}
@@ -85,7 +85,7 @@ func ParsePerf(r io.Reader) types.Profile {
 			if reCommentLine.MatchString(line) {
 				// do nothing
 			} else if matches := reEventRecordStartLine.FindStringSubmatch(line); matches != nil {
-				err := state.Event(context.Background(), "open_stack")
+				err := state.Event(ctx, "open_stack")
 				if err != nil {
 					panic(err)
 				}
@@ -96,14 +96,14 @@ func ParsePerf(r io.Reader) types.Profile {
 			}
 		case "event":
 			if matches := reStackLine.FindStringSubmatch(line); matches != nil {
-				err := state.Event(context.Background(), "read_stack")
+				err := state.Event(ctx, "read_stack")
 				if err != nil {
 					panic(err)
 				}
 				name := convertStackName(matches)
 				profile.AddFrame(name)
 			} else if reEndStackLine.MatchString(line) { // empty stack
-				err := state.Event(context.Background(), "close_stack")
+				err := state.Event(ctx, "close_stack")
 				if err != nil {
 					panic(err)
 				}
@@ -116,7 +116,7 @@ func ParsePerf(r io.Reader) types.Profile {
 				name := convertStackName(matches)
 				profile.AddFrame(name)
 			} else if reEndStackLine.MatchString(line) {
-				err := state.Event(context.Background(), "close_stack")
+				err := state.Event(ctx, "close_stack")
 				if err != nil {
 					panic(err)
 				}
@@ -126,14 +126,14 @@ func ParsePerf(r io.Reader) types.Profile {
 			}
 		case "closed":
 			if matches := reEventRecordStartLine.FindStringSubmatch(line); matches != nil {
-				err := state.Event(context.Background(), "open_stack")
+				err := state.Event(ctx, "open_stack")
 				if err != nil {
 					panic(err)
 				}
 				profile.OpenStack()
 				profile.AddFrame(matches[1])
 			} else {
-				err := state.Event(context.Background(), "finish")
+				err := state.Event(ctx, "finish")
 				if err != nil {
 					panic(err)
 				}

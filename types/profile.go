@@ -35,15 +35,18 @@ func (p *Profile) CloseStack() {
 
 func (p *Profile) AddFrame(name string) {
 	re, _ := regexp.Compile(`^\(`) // Skip process names
-	if !re.MatchString(name) {
-		name = strings.Replace(name, ";", ":", -1) // replace ; with :
-		name = strings.Replace(name, "<", "", -1)  // remove '<'
-		name = strings.Replace(name, ">", "", -1)  // remove '>'
-		name = strings.Replace(name, "\\", "", -1) // remove '\'
-		name = strings.Replace(name, "\"", "", -1) // remove '"'
-		if index := strings.Index(name, "("); index != -1 {
-			name = name[:index] // delete everything after '('
-		}
-		p.Stack = append(p.Stack, name)
+	if re.MatchString(name) {
+		return
 	}
+
+	name = strings.Replace(name, ";", ":", -1) // replace ; with :
+	name = strings.Replace(name, "<", "", -1)  // remove '<'
+	name = strings.Replace(name, ">", "", -1)  // remove '>'
+	name = strings.Replace(name, "\\", "", -1) // remove '\'
+	name = strings.Replace(name, "\"", "", -1) // remove '"'
+	if index := strings.Index(name, "("); index != -1 {
+		name = name[:index] // delete everything after '('
+	}
+	p.Stack = append(p.Stack, name)
+
 }

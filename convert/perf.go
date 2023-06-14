@@ -16,11 +16,11 @@ package convert
 
 import (
 	"bufio"
-	"io"
-	"regexp"
-
+	"context"
 	"github.com/looplab/fsm"
 	"github.com/spiermar/burn/types"
+	"io"
+	"regexp"
 )
 
 // ParsePerf parses a perf_events file format.
@@ -43,13 +43,13 @@ func ParsePerf(r io.Reader) types.Profile {
 			{Name: "finish", Src: []string{"closed"}, Dst: "end"},
 		},
 		fsm.Callbacks{
-			"enter_event": func(e *fsm.Event) {
+			"enter_event": func(ctx context.Context, e *fsm.Event) {
 
 			},
-			"enter_open": func(e *fsm.Event) {
+			"enter_open": func(ctx context.Context, e *fsm.Event) {
 
 			},
-			"enter_closed": func(e *fsm.Event) {
+			"enter_closed": func(ctx context.Context, e *fsm.Event) {
 
 			},
 		},
@@ -67,12 +67,12 @@ func ParsePerf(r io.Reader) types.Profile {
 		switch current {
 		case "start":
 			if reCommentLine.MatchString(line) {
-				err := state.Event("read_comment")
+				err := state.Event(context.Background(), "read_comment")
 				if err != nil {
 					panic(err)
 				}
 			} else if matches := reEventRecordStartLine.FindStringSubmatch(line); matches != nil {
-				err := state.Event("open_stack")
+				err := state.Event(context.Background(), "open_stack")
 				if err != nil {
 					panic(err)
 				}
@@ -85,7 +85,7 @@ func ParsePerf(r io.Reader) types.Profile {
 			if reCommentLine.MatchString(line) {
 				// do nothing
 			} else if matches := reEventRecordStartLine.FindStringSubmatch(line); matches != nil {
-				err := state.Event("open_stack")
+				err := state.Event(context.Background(), "open_stack")
 				if err != nil {
 					panic(err)
 				}
@@ -96,13 +96,14 @@ func ParsePerf(r io.Reader) types.Profile {
 			}
 		case "event":
 			if matches := reStackLine.FindStringSubmatch(line); matches != nil {
-				err := state.Event("read_stack")
+				err := state.Event(context.Background(), "read_stack")
 				if err != nil {
 					panic(err)
 				}
-				profile.AddFrame(matches[2])
+				name := convertStackName(matches)
+				profile.AddFrame(name)
 			} else if reEndStackLine.MatchString(line) { // empty stack
-				err := state.Event("close_stack")
+				err := state.Event(context.Background(), "close_stack")
 				if err != nil {
 					panic(err)
 				}
@@ -112,9 +113,10 @@ func ParsePerf(r io.Reader) types.Profile {
 			}
 		case "open":
 			if matches := reStackLine.FindStringSubmatch(line); matches != nil {
-				profile.AddFrame(matches[2])
+				name := convertStackName(matches)
+				profile.AddFrame(name)
 			} else if reEndStackLine.MatchString(line) {
-				err := state.Event("close_stack")
+				err := state.Event(context.Background(), "close_stack")
 				if err != nil {
 					panic(err)
 				}
@@ -124,14 +126,14 @@ func ParsePerf(r io.Reader) types.Profile {
 			}
 		case "closed":
 			if matches := reEventRecordStartLine.FindStringSubmatch(line); matches != nil {
-				err := state.Event("open_stack")
+				err := state.Event(context.Background(), "open_stack")
 				if err != nil {
 					panic(err)
 				}
 				profile.OpenStack()
 				profile.AddFrame(matches[1])
 			} else {
-				err := state.Event("finish")
+				err := state.Event(context.Background(), "finish")
 				if err != nil {
 					panic(err)
 				}
@@ -148,4 +150,13 @@ func ParsePerf(r io.Reader) types.Profile {
 	}
 
 	return profile
+}
+
+func convertStackName(matches []string) string {
+	name := matches[2]
+	// If name is unknown, use PC address instead.
+	if name == "[unknown]" {
+		name = matches[1]
+	}
+	return name
 }

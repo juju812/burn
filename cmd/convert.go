@@ -47,12 +47,12 @@ Examples:
   perf script | burn convert --html
 	`,
 	Run: func(cmd *cobra.Command, args []string) {
-		file := (*os.File)(nil)
+		var file *os.File
+		var err error
 		path := ""
 
 		if len(args) > 0 {
-			path := string(args[0])
-			err := (error)(nil)
+			path = args[0]
 			file, err = os.Open(path)
 			if err != nil {
 				panic(err)

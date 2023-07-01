@@ -87,13 +87,11 @@ Examples:
 		b := []byte{}
 
 		if pretty {
-			err := (error)(nil)
 			b, err = profile.RootNode.MarshalIndentJSON()
 			if err != nil {
 				panic(err)
 			}
 		} else {
-			err := (error)(nil)
 			b, err = profile.RootNode.MarshalJSON()
 			if err != nil {
 				panic(err)
@@ -103,7 +101,6 @@ Examples:
 		wr := os.Stdout
 
 		if output != "" {
-			err := (error)(nil)
 			wr, err = os.Create(output)
 			if err != nil {
 				panic(err)
